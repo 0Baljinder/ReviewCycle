@@ -1,0 +1,26 @@
+workflows:
+  review-cycle-android:
+    name: Review Cycle Android APK
+    max_build_duration: 60
+    # Individual Codemagic accounts' free build minutes are available on macOS M2.
+    instance_type: mac_mini_m2
+    scripts:
+      - name: Set Android SDK location and install required SDK packages
+        script: |
+          set -e
+          export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Download Gradle 8.9 and build debug APK
+        script: |
+          set -e
+          curl --fail --location --retry 3 \
+            https://services.gradle.org/distributions/gradle-8.9-bin.zip \
+            --output /tmp/gradle-8.9-bin.zip
+          mkdir -p "$HOME/gradle-cloud"
+          unzip -q -o /tmp/gradle-8.9-bin.zip -d "$HOME/gradle-cloud"
+          "$HOME/gradle-cloud/gradle-8.9/bin/gradle" --no-daemon assembleDebug
+    artifacts:
+      - app/build/outputs/apk/debug/app-debug.apk
